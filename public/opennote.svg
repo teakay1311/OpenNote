@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="biscuit" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#F2DFC2"/>
+      <stop offset="1" stop-color="#DDB680"/>
+    </linearGradient>
+    <path id="tile" d="M288 94H736C872 94 930 152 930 288V736C930 872 872 930 736 930H288C152 930 94 872 94 736V288C94 152 152 94 288 94Z"/>
+    <path id="sheet" d="M287 232H566Q579 232 589 242L654 307Q664 317 664 331V716C664 746 646 764 616 764H287C257 764 239 746 239 716V280C239 250 257 232 287 232Z"/>
+    <path id="pencil" d="M92-42H416A42 42 0 0 1 416 42H92L11 8Q-6 0 11-8Z"/>
+  </defs>
+
+  <use href="#tile" fill="#8F5B26" opacity=".28" transform="translate(0 13)"/>
+  <use href="#tile" fill="url(#biscuit)" stroke="#9C6B33" stroke-opacity=".26" stroke-width="3"/>
+
+  <use href="#sheet" fill="#8F5B26" opacity=".19" transform="translate(-20 43)"/>
+  <use href="#sheet" fill="#F2D7AA" stroke="#B98243" stroke-opacity=".39" stroke-width="4" transform="translate(-20 30)"/>
+  <use href="#sheet" fill="#FFF9EE" stroke="#B98243" stroke-opacity=".29" stroke-width="4"/>
+  <path d="M568 233Q580 233 589 242L654 307Q661 314 663 324H598Q568 324 568 294Z" fill="#F2D7AA"/>
+  <path d="M568 236V294Q568 324 598 324H661" fill="none" stroke="#B98243" stroke-opacity=".53" stroke-width="5" stroke-linecap="round"/>
+
+  <path d="M310 377H531M310 445H494" fill="none" stroke="#9F6B31" stroke-width="27" stroke-linecap="round"/>
+  <path d="M310 513H420" fill="none" stroke="#C38E4A" stroke-opacity=".69" stroke-width="23" stroke-linecap="round"/>
+
+  <g transform="translate(482 721) rotate(-50)">
+    <use href="#pencil" fill="#8F5B26" opacity=".22" transform="translate(-4 11)"/>
+    <use href="#pencil" fill="#CA8831" stroke="#975A1E" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M92-42H370V42H92Z" fill="#EAB041"/>
+    <path d="M92-42H370V-21H92Z" fill="#F5CB6F"/>
+    <path d="M92 18H370V42H92Z" fill="#D3922A"/>
+    <path d="M370-42H387V42H370Z" fill="#FFF9EE"/>
+    <path d="M92-42V42L11 8Q-6 0 11-8Z" fill="#F4DAAD"/>
+    <path d="M32-18Q42 0 32 18L11 8Q-6 0 11-8Z" fill="#7B4B25"/>
+  </g>
+</svg>

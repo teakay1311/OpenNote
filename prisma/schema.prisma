@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  name      String
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  notes     Note[]
+}
+
+model Note {
+  id        String    @id @default(cuid())
+  title     String    @default("")
+  content   String    @default("")
+  plainText String    @default("")
+  pinned    Boolean   @default(false)
+  locked    Boolean   @default(false)
+  pinHash   String?
+  folderId  String
+  folder    Folder    @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([folderId])
+  @@index([updatedAt])
+}
+
+model TrashAction {
+  id         String   @id
+  idsHash    String
+  sealed     String?
+  count      Int
+  expiresAt  DateTime
+
+  @@index([expiresAt])
+}
