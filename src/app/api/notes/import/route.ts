@@ -28,6 +28,11 @@ const backup = z.object({
 });
 
 export async function POST(req: Request) {
+  const mediaType = req.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
+  if (mediaType !== "application/json") {
+    return NextResponse.json({ error: "Dữ liệu sao lưu phải được gửi dưới dạng JSON" }, { status: 415 });
+  }
+
   const parsed = backup.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Dữ liệu sao lưu không hợp lệ" }, { status: 400 });
   const body = parsed.data;

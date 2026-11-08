@@ -94,7 +94,7 @@ export function SettingsDialog() {
 
 interface StorageInfo {
   storageType: string;
-  path: string;
+  path: string | null;
   sizeBytes: number | null;
   noteCount: number;
   folderCount: number;
@@ -149,7 +149,7 @@ function StorageTab() {
             khác. Vị trí tệp dữ liệu:
           </p>
           <code className="block truncate rounded-md bg-black/5 px-2 py-1 font-mono text-xs dark:bg-white/10">
-            {data.path}
+            {data.path ?? "—"}
           </code>
         </div>
       </div>

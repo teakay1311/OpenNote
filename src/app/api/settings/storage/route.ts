@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import path from "path";
 import { promises as fs } from "fs";
 import { db } from "@/lib/db";
 import { ensureSystemFolders } from "@/lib/opennote-server";
@@ -20,20 +19,14 @@ export async function GET() {
       db.note.count({ where: { deletedAt: { not: null } } }),
     ]);
 
-    // Resolve SQLite file from DATABASE_URL (e.g. "file:./db/custom.db")
     let sizeBytes: number | null = null;
-    let filePath = "db/custom.db";
+    let filePath: string | null = null;
     try {
-      const url = process.env.DATABASE_URL || "";
-      if (url.startsWith("file:")) {
-        const rel = url.slice("file:".length).replace(/^\.\//, "");
-        filePath = rel;
-        const abs = path.isAbsolute(rel) ? rel : path.join(process.cwd(), rel);
-        const stat = await fs.stat(abs);
-        sizeBytes = stat.size;
-      }
+      const databases = await db.$queryRaw<{ name: string; file: string }[]>`PRAGMA database_list`;
+      filePath = databases.find(({ name }) => name === "main")?.file || null;
+      if (filePath) sizeBytes = (await fs.stat(filePath)).size;
     } catch {
-      // Không lấy được dung lượng → trả null, UI hiển thị "—"
+      // Thông tin tệp không ảnh hưởng đến số đếm đã đọc từ SQLite.
     }
 
     return NextResponse.json({
