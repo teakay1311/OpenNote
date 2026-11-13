@@ -2,6 +2,8 @@
 
 <img src="./public/opennote.svg" width="128" height="128" alt="Biểu tượng OpenNote">
 
+![Giao diện OpenNote với thanh thư mục, danh sách ghi chú và trình soạn thảo tiếng Việt](./docs/images/opennote-preview.png)
+
 OpenNote là ứng dụng ghi chú cá nhân dùng giao diện tiếng Việt. Ứng dụng chạy trên máy của bạn và lưu dữ liệu trong SQLite.
 
 - Soạn ghi chú có định dạng, chèn ảnh, bảng và danh sách công việc.
