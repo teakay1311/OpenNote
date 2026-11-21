@@ -192,8 +192,11 @@ do {
     guard let resources = Bundle.main.resourceURL else { throw LaunchError("Không tìm thấy tài nguyên OpenNote.") }
     if let source = options.source {
         let directory = try DataDirectory(options.directory)
-        let backup = try directory.migrate(from: source, upgrade: resources.appendingPathComponent("upgrade-trash-undo.sql"))
-        print("Đã chuyển SQLite vào \(directory.database.path)\nBản sao trước nâng cấp: \(backup.path)")
+        if let backup = try directory.migrate(from: source, upgrade: resources.appendingPathComponent("upgrade-trash-undo.sql")) {
+            print("Đã chuyển SQLite vào \(directory.database.path)\nBản sao trước nâng cấp: \(backup.path)")
+        } else {
+            print("SQLite đã có lược đồ hiện hành: \(directory.database.path)")
+        }
     } else {
         let app = NSApplication.shared
         app.setActivationPolicy(options.testing ? .prohibited : .regular)

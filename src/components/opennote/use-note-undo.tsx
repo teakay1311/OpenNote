@@ -36,12 +36,13 @@ export async function runUndoEntry(
       duration: 2500,
     });
   } catch (error) {
-    const expired = error instanceof RequestError && error.status === 410;
-    if (expired) history.remove(entry.id);
+    const cannotRetry = error instanceof RequestError &&
+      (error.status === 410 || (error.status === 409 && error.code === "FOLDER_NOT_FOUND"));
+    if (cannotRetry) history.remove(entry.id);
     toast({
       title: "Không hoàn tác được hành động này",
       description: error instanceof Error ? error.message : "Vui lòng thử lại.",
-      action: expired ? undefined : (
+      action: cannotRetry ? undefined : (
         <ToastAction altText="Thử lại hoàn tác" onClick={() => void runUndoEntry(entry, toast, selectNote)}>
           Thử lại
         </ToastAction>

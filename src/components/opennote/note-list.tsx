@@ -83,7 +83,7 @@ export function NoteList() {
   const toggleListCollapsed = useOpenNoteStore((s) => s.toggleListCollapsed);
   const openSettings = useOpenNoteStore((s) => s.openSettings);
   const searchFocusTick = useOpenNoteStore((s) => s.searchFocusTick);
-  const { data, isLoading } = useNotesList();
+  const { data, isLoading, isError, isFetching, refetch } = useNotesList();
   const { data: foldersData } = useFolders();
   const createNote = useCreateNote();
   const purgeNotes = usePurgeNotes();
@@ -326,6 +326,14 @@ export function NoteList() {
 
       {/* List */}
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-24 md:pb-4">
+        {isError && (
+          <div role="alert" className="flex flex-wrap items-center gap-2 p-3 text-sm">
+            <span>Không tải được danh sách ghi chú.</span>
+            <Button size="sm" variant="outline" disabled={isFetching} onClick={() => void refetch()}>
+              Thử tải lại
+            </Button>
+          </div>
+        )}
         {isLoading ? (
           <div className="space-y-2 p-1">
             {[...Array(6)].map((_, i) => (
@@ -335,7 +343,7 @@ export function NoteList() {
               />
             ))}
           </div>
-        ) : notes.length === 0 ? (
+        ) : !data && isError ? null : notes.length === 0 ? (
           <EmptyState isTrash={isTrash} searching={!!search.trim()} />
         ) : layout === "gallery" ? (
           <GalleryView

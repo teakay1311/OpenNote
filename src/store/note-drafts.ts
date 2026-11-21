@@ -131,7 +131,9 @@ export async function withSavedDrafts<T>(operation: () => Promise<T>, ids?: stri
   if (useNoteDrafts.getState().paused) throw new Error("Đang xử lý thao tác khác");
   useNoteDrafts.setState({ paused: true });
   try {
-    await Promise.all((ids ?? Object.keys(useNoteDrafts.getState().drafts)).map(flushNoteDraft));
+    const saves = await Promise.allSettled((ids ?? Object.keys(useNoteDrafts.getState().drafts)).map(flushNoteDraft));
+    const failure = saves.find((save) => save.status === "rejected");
+    if (failure) throw failure.reason;
     return await operation();
   } finally {
     useNoteDrafts.setState({ paused: false });

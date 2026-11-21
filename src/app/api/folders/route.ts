@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cleanupExpiredTrashActions } from "@/lib/trash-cleanup";
 import { tagKey } from "@/lib/note-tags";
 import { db } from "@/lib/db";
+import { deleteFolder, renameFolder } from "@/lib/folder-mutations";
 import {
   ensureSystemFolders,
   extractTags,
@@ -75,4 +76,16 @@ export async function POST(request: Request) {
     console.error("POST /api/folders failed", e);
     return NextResponse.json({ error: "Không tạo được thư mục" }, { status: 500 });
   }
+}
+
+export async function PATCH(request: Request) {
+  const id = new URL(request.url).searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "Thiếu mã thư mục" }, { status: 400 });
+  return renameFolder(request, id);
+}
+
+export async function DELETE(request: Request) {
+  const id = new URL(request.url).searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "Thiếu mã thư mục" }, { status: 400 });
+  return deleteFolder(id);
 }

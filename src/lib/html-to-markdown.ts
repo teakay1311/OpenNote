@@ -11,10 +11,15 @@ function escapeCell(s: string): string {
   return s.replace(/\|/g, "\\|").replace(/\n+/g, " ").trim();
 }
 
+function wrapInline(text: string, marker: string) {
+  return text.replace(/^(\s*)([\s\S]*?\S)(\s*)$/, (_, before, body, after) =>
+    before + marker + body + marker + after);
+}
+
 function cssBold(el: HTMLElement, text: string) {
   const weight = el.style.fontWeight;
   if (weight !== "bold" && weight !== "bolder" && !(Number(weight) >= 600)) return text;
-  return text.replace(/^(\s*)([\s\S]*?\S)(\s*)$/, "$1**$2**$3");
+  return wrapInline(text, "**");
 }
 
 function inline(node: Node): string {
@@ -38,23 +43,17 @@ function inline(node: Node): string {
     case "BR":
       return "\n";
     case "B":
-    case "STRONG": {
-      const t = inlineChildren(el).trim();
-      return t ? `**${t}**` : "";
-    }
+    case "STRONG":
+      return wrapInline(inlineChildren(el), "**");
     case "I":
-    case "EM": {
-      const t = inlineChildren(el).trim();
-      return t ? `*${t}*` : "";
-    }
+    case "EM":
+      return wrapInline(inlineChildren(el), "*");
     case "U":
       return inlineChildren(el); // Markdown thuần không có gạch chân → giữ text
     case "S":
     case "STRIKE":
-    case "DEL": {
-      const t = inlineChildren(el).trim();
-      return t ? `~~${t}~~` : "";
-    }
+    case "DEL":
+      return wrapInline(inlineChildren(el), "~~");
     case "CODE": {
       const t = el.textContent ?? "";
       return t.trim() ? `\`${t}\`` : "";

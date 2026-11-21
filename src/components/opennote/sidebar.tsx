@@ -411,6 +411,10 @@ function usePendingFolderWarning(pending: boolean) {
   }, [pending]);
 }
 
+function folderMutationUrl(id: string) {
+  return "/api/folders?" + new URLSearchParams({ id }).toString();
+}
+
 function FolderDialog({
   open,
   onOpenChange,
@@ -450,12 +454,12 @@ function FolderDialog({
       if (creation.current && creation.current.name !== trimmed) {
         const folders = await jsonFetch<{ folders: FolderItem[] }>("/api/folders", { cache: "no-store" });
         if (folders.folders.some((folder) => folder.id === id)) {
-          await jsonFetch(`/api/folders/${id}`, { method: "PATCH", body: JSON.stringify({ name: trimmed }) });
+          await jsonFetch(folderMutationUrl(id), { method: "PATCH", body: JSON.stringify({ name: trimmed }) });
         } else {
           await jsonFetch("/api/folders", { method: "POST", body: JSON.stringify({ id, name: trimmed }) });
         }
       } else {
-        await jsonFetch(folderId ? `/api/folders/${id}` : "/api/folders", {
+        await jsonFetch(folderId ? folderMutationUrl(id) : "/api/folders", {
           method: folderId ? "PATCH" : "POST",
           body: JSON.stringify(folderId ? { name: trimmed } : { id, name: trimmed }),
         });
@@ -539,7 +543,7 @@ function DeleteFolderDialog({
           ? await jsonFetch<{ folders: FolderItem[] }>("/api/folders", { cache: "no-store" })
           : null;
         if (!current || current.folders.some((item) => item.id === folder.id)) {
-          await jsonFetch(`/api/folders/${folder.id}`, { method: "DELETE" });
+          await jsonFetch(folderMutationUrl(folder.id), { method: "DELETE" });
         }
       } catch (failure) {
         const current = await jsonFetch<{ folders: FolderItem[] }>("/api/folders", { cache: "no-store" }).catch(() => null);
@@ -744,7 +748,6 @@ function TagManagerDialog({
                             if (e.key === "Escape") setRenaming(null);
                           }}
                           className="h-8 flex-1"
-                          maxLength={50}
                         />
                         <Button
                           size="icon"

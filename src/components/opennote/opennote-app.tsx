@@ -20,7 +20,7 @@ function OpenNoteLayout() {
   const listCollapsed = useOpenNoteStore((s) => s.listCollapsed);
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-background">
+    <div className="opennote-layout flex h-dvh w-full overflow-hidden bg-background">
       {/* Desktop sidebar — chỉ hiện từ lg trở lên, thu gọn được */}
       {!sidebarCollapsed && (
         <aside className="hidden w-60 shrink-0 border-r lg:block" aria-label="Thanh bên">

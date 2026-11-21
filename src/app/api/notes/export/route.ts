@@ -16,25 +16,28 @@ export async function GET() {
   try {
     await ensureSystemFolders();
 
-    const folders = await db.folder.findMany({
-      orderBy: [{ isSystem: "desc" }, { name: "asc" }],
-      select: { id: true, name: true, isSystem: true },
-    });
+    const { folders, notes } = await db.$transaction(async (tx) => {
+      const folders = await tx.folder.findMany({
+        orderBy: [{ isSystem: "desc" }, { name: "asc" }],
+        select: { id: true, name: true, isSystem: true },
+      });
 
-    const notes = await db.note.findMany({
-      orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        plainText: true,
-        pinned: true,
-        locked: true,
-        folderId: true,
-        deletedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      const notes = await tx.note.findMany({
+        orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          plainText: true,
+          pinned: true,
+          locked: true,
+          folderId: true,
+          deletedAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      return { folders, notes };
     });
 
     return NextResponse.json({

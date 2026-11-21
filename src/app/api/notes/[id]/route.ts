@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { DEFAULT_FOLDER_ID, htmlToPlainText, TRASH_FOLDER_ID } from "@/lib/opennote-server";
-import { canReadNote, NOTE_ACCESS_HEADER, noteRevision, publicNote, revokeNoteAccess } from "@/lib/note-access";
+import { canReadNote, NOTE_ACCESS_HEADER, noteRevision, publicNote } from "@/lib/note-access";
 import { sanitizeNoteHtml } from "@/lib/note-html";
+import { MAX_NOTE_TITLE_LENGTH } from "@/lib/note-title";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,9 @@ export async function PATCH(request: Request, { params }: Route) {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return NextResponse.json({ error: "Dữ liệu ghi chú không hợp lệ" }, { status: 400 });
     }
+    if ("folderId" in body && (typeof body.folderId !== "string" || !body.folderId || body.folderId === TRASH_FOLDER_ID)) {
+      return NextResponse.json({ error: "Thư mục đích không hợp lệ" }, { status: 400 });
+    }
     if ("deletedAt" in body && body.deletedAt !== null &&
         (typeof body.deletedAt !== "string" || Number.isNaN(Date.parse(body.deletedAt)))) {
       return NextResponse.json({ error: "Thời điểm xóa không hợp lệ" }, { status: 400 });
@@ -46,7 +50,12 @@ export async function PATCH(request: Request, { params }: Route) {
       }
 
       const data: Prisma.NoteUncheckedUpdateInput = {};
-      if (typeof body.title === "string") data.title = body.title.slice(0, 500);
+      if (typeof body.title === "string" && body.title !== note.title) {
+        if (body.title.length > MAX_NOTE_TITLE_LENGTH) {
+          return NextResponse.json({ error: "Tiêu đề ghi chú vượt quá giới hạn 500 ký tự" }, { status: 400 });
+        }
+        data.title = body.title;
+      }
       if (typeof body.content === "string") {
         const content = sanitizeNoteHtml(body.content);
         data.content = content;
@@ -67,7 +76,11 @@ export async function PATCH(request: Request, { params }: Route) {
       if (typeof body.pinned === "boolean") data.pinned = body.pinned;
       if (typeof body.folderId === "string") {
         const folder = await tx.folder.findUnique({ where: { id: body.folderId } });
-        if (folder && folder.id !== TRASH_FOLDER_ID) data.folderId = folder.id;
+        if (!folder) return NextResponse.json({
+          error: "Thư mục đích không còn tồn tại",
+          code: "FOLDER_NOT_FOUND",
+        }, { status: 409 });
+        data.folderId = folder.id;
       }
       if ("deletedAt" in body) {
         data.deletedAt = body.deletedAt ? new Date(body.deletedAt) : null;
@@ -87,17 +100,5 @@ export async function PATCH(request: Request, { params }: Route) {
     }
     console.error("PATCH /api/notes/[id] failed", e);
     return NextResponse.json({ error: "Không lưu được ghi chú" }, { status: 500 });
-  }
-}
-
-export async function DELETE(_request: Request, { params }: Route) {
-  try {
-    const { id } = await params;
-    await db.note.delete({ where: { id } });
-    revokeNoteAccess(id);
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    console.error("DELETE /api/notes/[id] failed", e);
-    return NextResponse.json({ error: "Không xóa được ghi chú" }, { status: 500 });
   }
 }

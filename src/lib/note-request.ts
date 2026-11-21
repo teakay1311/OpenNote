@@ -2,7 +2,7 @@ import { useOpenNoteStore } from "@/store/opennote-store";
 import type { NoteDetail } from "./opennote-types";
 
 export class RequestError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly code?: string) {
     super(message);
   }
 }
@@ -13,7 +13,11 @@ export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> 
   const res = await fetch(url, { ...init, headers });
   const data = await res.json().catch(() => null);
   if (!res.ok || data === null) {
-    throw new RequestError(data?.error || "Không nhận được kết quả từ máy chủ", res.status);
+    throw new RequestError(
+      data?.error || "Không nhận được kết quả từ máy chủ",
+      res.status,
+      typeof data?.code === "string" ? data.code : undefined,
+    );
   }
   return data as T;
 }

@@ -431,18 +431,17 @@ function ShortcutsTab() {
       <div className="flex items-center justify-between rounded-xl border px-4 py-3">
         <div>
           <Label htmlFor="shortcuts-enabled" className="text-sm font-medium">
-            Bật phím tắt
+            Bật phím tắt toàn cục
           </Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Các phím tắt không xung đột với thao tác mặc định (Ctrl+C, Ctrl+V,
-            Ctrl+F…).
+            Phím tắt trong trình soạn thảo hoạt động riêng.
           </p>
         </div>
         <Switch
           id="shortcuts-enabled"
           checked={enabled}
           onCheckedChange={setEnabled}
-          aria-label="Bật hoặc tắt phím tắt"
+          aria-label="Bật hoặc tắt phím tắt toàn cục"
         />
       </div>
 

@@ -44,6 +44,7 @@ import {
 import { usePurgeNotes, useRunWithUndo } from "./use-note-undo";
 import { useOpenNoteStore } from "@/store/opennote-store";
 import { sanitizeNoteHtml } from "@/lib/note-html";
+import { MAX_NOTE_TITLE_LENGTH } from "@/lib/note-title";
 import { fetchNote, RequestError } from "@/lib/note-request";
 import type { NoteDetail } from "@/lib/opennote-types";
 import { flushNoteDraft, forgetCommittedNote, loadAfterDiscard, registerOpenNoteRefresh, stageNoteDraft, useNoteDrafts } from "@/store/note-drafts";
@@ -131,6 +132,32 @@ function EditorEmpty() {
 
 /* ==================== Editor inner ==================== */
 
+function ShowNoteListButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="hidden size-9 shrink-0 rounded-lg md:inline-flex"
+      aria-label="Hiện danh sách ghi chú"
+      title="Hiện danh sách ghi chú"
+      onClick={onClick}
+    >
+      <PanelLeftOpen className="size-[18px]" />
+    </Button>
+  );
+}
+
+const TASK_CHECKBOX = "li.taskItem > span.taskCb";
+
+function syncChecklist(root: HTMLElement) {
+  for (const checkbox of root.querySelectorAll<HTMLElement>(TASK_CHECKBOX)) {
+    checkbox.tabIndex = 0;
+    checkbox.setAttribute("role", "checkbox");
+    checkbox.setAttribute("aria-label", "Hoàn thành công việc");
+    checkbox.setAttribute("aria-checked", String(checkbox.parentElement?.classList.contains("checked") ?? false));
+  }
+}
+
 function EditorInner({ noteId }: { noteId: string }) {
   const { data: note, isLoading, isFetching, isFetchedAfterMount, error: detailError, refetch } = useNoteDetail(noteId);
   const action = useNoteAction();
@@ -155,6 +182,7 @@ function EditorInner({ noteId }: { noteId: string }) {
   /** last table cell the caret was in (kept for consecutive table ops) */
   const tableCellRef = useRef<HTMLTableCellElement | null>(null);
   const [title, setTitle] = useState("");
+  const [titleTooLong, setTitleTooLong] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [reloadFailed, setReloadFailed] = useState(false);
@@ -301,7 +329,9 @@ function EditorInner({ noteId }: { noteId: string }) {
     const pending = useNoteDrafts.getState().drafts[noteId];
     editor.dataset.loaded = noteId;
     editor.innerHTML = sanitizeNoteHtml(pending?.body.content ?? fresh.content);
+    syncChecklist(editor);
     setTitle(pending?.body.title ?? fresh.title);
+    setTitleTooLong(false);
     baseRef.current = pending?.base ?? fresh;
     histRef.current = {
       entries: [{ html: editor.innerHTML, start: -1, end: -1 }],
@@ -362,12 +392,12 @@ function EditorInner({ noteId }: { noteId: string }) {
     });
   }, []);
 
-  const scheduleSave = useCallback(() => {
+  const scheduleSave = useCallback((nextTitle?: string) => {
     const editor = editorRef.current;
     const input = titleRef.current;
     const base = baseRef.current;
     if (!editor || !input || !base || editor.dataset.loaded !== noteId || readOnly) return;
-    stageNoteDraft(noteId, { title: input.value, content: editor.innerHTML, plainText: getPlainText() }, base);
+    stageNoteDraft(noteId, { title: nextTitle ?? input.value, content: editor.innerHTML, plainText: getPlainText() }, base);
   }, [noteId, getPlainText, readOnly]);
 
   useEffect(() => () => {
@@ -471,7 +501,7 @@ function EditorInner({ noteId }: { noteId: string }) {
   const handleEditorInput = useCallback(() => {
     scheduleSave();
     const h = histRef.current;
-    if (Date.now() - h.lastPush > 600) commitHistory();
+    if (h.index < h.entries.length - 1 || Date.now() - h.lastPush > 600) commitHistory();
     else syncHistory();
   }, [scheduleSave, commitHistory, syncHistory]);
 
@@ -480,6 +510,7 @@ function EditorInner({ noteId }: { noteId: string }) {
       const el = editorRef.current;
       if (!el) return;
       el.innerHTML = entry.html;
+      syncChecklist(el);
       setCaretOffsets(entry.start, entry.end);
       updateFormatState();
       refreshHist();
@@ -568,9 +599,19 @@ function EditorInner({ noteId }: { noteId: string }) {
       false,
       '<ul class="taskList"><li class="taskItem"><span class="taskCb" contenteditable="false"></span><br></li></ul>'
     );
+    if (editorRef.current) syncChecklist(editorRef.current);
     syncHistory();
     scheduleSave();
   }, [restoreSelection, commitHistory, syncHistory, scheduleSave]);
+
+  const toggleChecklistItem = useCallback((checkbox: Element) => {
+    const item = checkbox.parentElement;
+    if (readOnly || useNoteDrafts.getState().paused || !item || !editorRef.current?.contains(item)) return;
+    commitHistory(true);
+    checkbox.setAttribute("aria-checked", String(item.classList.toggle("checked")));
+    syncHistory();
+    scheduleSave();
+  }, [commitHistory, syncHistory, scheduleSave, readOnly]);
 
   /* Keyboard: undo/redo shortcuts, markdown-style list conversion
      ("1." / "-" + Space → list), and Enter inside checklist items
@@ -578,6 +619,13 @@ function EditorInner({ noteId }: { noteId: string }) {
      build the new item manually). */
   const handleEditorKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (readOnly || e.nativeEvent.isComposing) return;
+      const checkbox = e.target instanceof Element ? e.target.closest(TASK_CHECKBOX) : null;
+      if (checkbox && (e.key === " " || e.key === "Enter")) {
+        e.preventDefault();
+        if (!e.repeat) toggleChecklistItem(checkbox);
+        return;
+      }
       const sel = window.getSelection();
 
       /* Undo / redo shortcuts */
@@ -724,7 +772,8 @@ function EditorInner({ noteId }: { noteId: string }) {
       e.preventDefault();
       commitHistory(true);
 
-      if (!li.textContent?.trim()) {
+      const hasText = li.textContent?.replace(/\u200B/g, "").trim();
+      if (!hasText && !li.querySelector("img, table, hr")) {
         // Empty item → leave the checklist
         const ul = li.closest("ul");
         const p = document.createElement("p");
@@ -743,6 +792,7 @@ function EditorInner({ noteId }: { noteId: string }) {
         newLi.className = "taskItem";
         newLi.innerHTML = '<span class="taskCb" contenteditable="false"></span><br>';
         li.after(newLi);
+        if (editorRef.current) syncChecklist(editorRef.current);
         const range = document.createRange();
         range.setStart(newLi, 1);
         range.collapse(true);
@@ -752,7 +802,7 @@ function EditorInner({ noteId }: { noteId: string }) {
       syncHistory();
       scheduleSave();
     },
-    [handleRedo, handleUndo, commitHistory, syncHistory, updateFormatState, scheduleSave]
+    [handleRedo, handleUndo, commitHistory, syncHistory, updateFormatState, scheduleSave, readOnly, toggleChecklistItem]
   );
 
   const insertTable = useCallback(() => {
@@ -792,6 +842,7 @@ function EditorInner({ noteId }: { noteId: string }) {
       restoreSelection();
       commitHistory(true);
       document.execCommand("insertHTML", false, sanitizeNoteHtml(html));
+      syncChecklist(editorRef.current);
       syncHistory();
       scheduleSave();
     },
@@ -832,20 +883,13 @@ function EditorInner({ noteId }: { noteId: string }) {
   /* ---------- Checkbox toggle ---------- */
   const handleEditorClick = useCallback(
     (e: React.MouseEvent) => {
-      if (readOnly) return;
-      const target = e.target as HTMLElement;
-      if (target.closest(".taskCb")) {
+      const checkbox = e.target instanceof Element ? e.target.closest(TASK_CHECKBOX) : null;
+      if (checkbox) {
         e.preventDefault();
-        const li = target.closest("li.taskItem");
-        if (li) {
-          commitHistory(true);
-          li.classList.toggle("checked");
-          syncHistory();
-          scheduleSave();
-        }
+        toggleChecklistItem(checkbox);
       }
     },
-    [commitHistory, syncHistory, scheduleSave, readOnly]
+    [toggleChecklistItem]
   );
 
   /* ---------- Paste / drag-drop images ---------- */
@@ -1015,11 +1059,25 @@ function EditorInner({ noteId }: { noteId: string }) {
     );
   }
 
-  if (!note || (detailError instanceof RequestError && detailError.status === 404)) {
+  const missingNote = detailError instanceof RequestError && detailError.status === 404;
+  const detailNotice = detailError && !missingNote && (
+    <div role="alert" className="flex flex-wrap items-center gap-2 px-4 py-2 text-sm">
+      <span>Không tải được ghi chú.</span>
+      <Button size="sm" variant="outline" disabled={isFetching} onClick={() => void refetch()}>
+        Thử tải lại
+      </Button>
+    </div>
+  );
+
+  if (!note || missingNote) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 bg-background p-8 text-center">
         <FileText className="size-10 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">Không tìm thấy ghi chú</p>
+        {detailNotice || <p className="text-sm text-muted-foreground">Không tìm thấy ghi chú</p>}
+        <Button size="sm" variant="outline" className="md:hidden" onClick={() => selectNote(null)}>
+          Quay lại danh sách
+        </Button>
+        {listCollapsed && <ShowNoteListButton onClick={toggleListCollapsed} />}
         {draftNotice}
       </div>
     );
@@ -1040,15 +1098,9 @@ function EditorInner({ noteId }: { noteId: string }) {
             <ArrowLeft className="size-5" />
           </Button>
           <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9 rounded-lg"
-            aria-label="Thêm tùy chọn"
-          >
-            <MoreHorizontal className="size-5" />
-          </Button>
+          {listCollapsed && <ShowNoteListButton onClick={toggleListCollapsed} />}
         </header>
+        {detailNotice}
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
           <div className="flex size-16 items-center justify-center rounded-2xl bg-amber-500/15">
             <Lock className="size-7 text-amber-600 dark:text-amber-400" />
@@ -1081,7 +1133,7 @@ function EditorInner({ noteId }: { noteId: string }) {
 
   /* ---------- Render: main editor ---------- */
   return (
-    <div className="flex h-full min-w-0 flex-col bg-background print-area">
+    <div className="opennote-editor-pane flex h-full min-w-0 flex-col bg-background">
       <EditorTopBar
         noteId={noteId}
         inTrash={inTrash}
@@ -1136,6 +1188,7 @@ function EditorInner({ noteId }: { noteId: string }) {
         formatActions={formatActions}
       />
 
+      {detailNotice}
       {draftNotice}
       {inTrash && (
         <div className="flex items-center gap-2 border-b bg-amber-500/10 px-4 py-2 text-sm text-amber-800 dark:text-amber-300 md:px-8">
@@ -1154,24 +1207,37 @@ function EditorInner({ noteId }: { noteId: string }) {
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-2xl px-4 pt-6 pb-32 md:px-8 md:pt-8">
+      <div className="print-area min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-2xl px-4 pt-6 pb-32 print:max-w-none print:p-0 md:px-8 md:pt-8">
           <p className="mb-3 text-center text-[11px] text-muted-foreground/70">
             {note.updatedAt ? formatNoteDateLong(note.updatedAt) : ""}
           </p>
+          {title && <h1 className="hidden break-words text-2xl font-bold print:block">{title}</h1>}
           <input
             ref={titleRef}
             readOnly={readOnly}
             value={title}
             onChange={(e) => {
-              setTitle(e.target.value);
-              scheduleSave();
+              const value = e.currentTarget.value;
+              if (value.length > MAX_NOTE_TITLE_LENGTH) {
+                setTitleTooLong(true);
+                return;
+              }
+              setTitleTooLong(false);
+              setTitle(value);
+              scheduleSave(value);
             }}
             onKeyDown={handleTitleKeyDown}
             placeholder="Tiêu đề"
             aria-label="Tiêu đề ghi chú"
-            className="w-full border-none bg-transparent text-2xl font-bold tracking-tight outline-none placeholder:text-muted-foreground/40 md:text-[28px]"
+            aria-describedby={titleTooLong ? "note-title-limit" : undefined}
+            className="w-full print:hidden border-none bg-transparent text-2xl font-bold tracking-tight outline-none placeholder:text-muted-foreground/40 md:text-[28px]"
           />
+          {titleTooLong && (
+            <p id="note-title-limit" role="alert" className="text-sm text-destructive print:hidden">
+              Tiêu đề tối đa {MAX_NOTE_TITLE_LENGTH} ký tự.
+            </p>
+          )}
           <div
             ref={editorRef}
             contentEditable={!readOnly}
@@ -1200,7 +1266,7 @@ function EditorInner({ noteId }: { noteId: string }) {
           />
 
           {inTable && !readOnly && (
-            <div className="sticky bottom-4 mx-auto mt-4 flex w-fit items-center gap-0.5 rounded-full border bg-popover/95 p-1 shadow-lg backdrop-blur">
+            <div className="print:hidden sticky bottom-4 mx-auto mt-4 flex w-fit items-center gap-0.5 rounded-full border bg-popover/95 p-1 shadow-lg backdrop-blur">
               <TableCtlButton label="+ Hàng" title="Thêm hàng dưới" onClick={() => mutateTable("addRow")} />
               <TableCtlButton label="+ Cột" title="Thêm cột phải" onClick={() => mutateTable("addCol")} />
               <TableCtlButton label="− Hàng" title="Bớt một hàng" onClick={() => mutateTable("removeRow")} />
@@ -1371,22 +1437,7 @@ function EditorTopBar(props: EditorTopBarProps) {
 
         {/* Khi cột danh sách đang ẩn: nút mở lại danh sách (desktop).
             Nút ẩn danh sách đã chuyển vào khung danh sách ghi chú. */}
-        {listHidden && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hidden size-9 shrink-0 rounded-lg md:inline-flex"
-                aria-label="Hiện danh sách ghi chú"
-                onClick={onToggleList}
-              >
-                <PanelLeftOpen className="size-[18px]" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Hiện danh sách ghi chú</TooltipContent>
-          </Tooltip>
-        )}
+        {listHidden && <ShowNoteListButton onClick={onToggleList} />}
 
         <Tooltip>
           <TooltipTrigger asChild>

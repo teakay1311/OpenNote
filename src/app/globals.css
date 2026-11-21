@@ -323,20 +323,18 @@
 /* ============ Print: chỉ in nội dung ghi chú ============ */
 
 @media print {
-  body * {
-    visibility: hidden !important;
+  body > :not(.opennote-layout),
+  .opennote-layout > :not(main),
+  .opennote-editor-pane > :not(.print-area) {
+    display: none !important;
   }
 
-  .print-area,
-  .print-area * {
-    visibility: visible !important;
-  }
-
+  .opennote-layout,
+  .opennote-layout main,
+  .opennote-editor-pane,
   .print-area {
-    position: absolute !important;
-    inset: 0 auto auto 0;
-    width: 100% !important;
     display: block !important;
+    height: auto !important;
     overflow: visible !important;
     background: white !important;
     color: black !important;

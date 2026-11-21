@@ -1,13 +1,13 @@
 {
   "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "license": "Apache-2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "next dev --hostname 127.0.0.1 -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && if [ -d public ]; then cp -r public .next/standalone/; fi",
     "package:mac": "bash scripts/macos/package.sh",
-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "start": "HOSTNAME=127.0.0.1 NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",

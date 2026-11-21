@@ -87,9 +87,19 @@ export async function GET(request: Request) {
 /** POST /api/notes — create a new note (optionally in a folder) */
 export async function POST(request: Request) {
   try {
+    const raw = await request.text();
+    let body: { folderId?: unknown };
+    try {
+      body = raw ? JSON.parse(raw) : {};
+    } catch {
+      return NextResponse.json({ error: "Dữ liệu ghi chú không phải JSON hợp lệ" }, { status: 400 });
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        (body.folderId !== undefined && typeof body.folderId !== "string")) {
+      return NextResponse.json({ error: "Dữ liệu tạo ghi chú không hợp lệ" }, { status: 400 });
+    }
+    const folderId = body.folderId || DEFAULT_FOLDER_ID;
     await ensureSystemFolders();
-    const body = await request.json().catch(() => ({}));
-    const folderId = body?.folderId || DEFAULT_FOLDER_ID;
 
     // Make sure folder exists, otherwise fall back to default
     const folder = await db.folder.findUnique({ where: { id: folderId } });

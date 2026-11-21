@@ -40,7 +40,13 @@ export function sanitizeNoteHtml(html: string) {
     ],
     allowedAttributes: {
       "*": ["style", "class", "dir"],
-      span: [{ name: "contenteditable", values: ["false"] }],
+      span: [
+        { name: "contenteditable", values: ["false"] },
+        { name: "tabindex", values: ["0"] },
+        { name: "role", values: ["checkbox"] },
+        { name: "aria-checked", values: ["true", "false"] },
+        { name: "aria-label", values: ["Hoàn thành công việc"] },
+      ],
       font: ["color", "size", "face"],
       a: ["href", "title", "target", "rel"],
       img: ["src", "alt", "title", "width", "height"],
@@ -63,6 +69,12 @@ export function sanitizeNoteHtml(html: string) {
         }
         if (tagName === "img" && /^\s*data\s*:/i.test(attribs.src ?? "") && !embeddedImage.test(attribs.src)) {
           delete attribs.src;
+        }
+        if (tagName === "span" && !attribs.class?.split(/\s+/).includes("taskCb")) {
+          delete attribs.tabindex;
+          delete attribs.role;
+          delete attribs["aria-checked"];
+          delete attribs["aria-label"];
         }
         if (tagName === "a" && attribs.target === "_blank") attribs.rel = "noopener noreferrer";
         return { tagName, attribs };

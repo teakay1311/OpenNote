@@ -26,7 +26,8 @@
    ```
 
 3. Mở app khi lệnh báo đã chuyển dữ liệu. Kiểm tra số ghi chú, thư mục và đường dẫn trong **Cài đặt → Lưu trữ**. Dữ liệu nằm tại `~/Library/Application Support/OpenNote/custom.db`. Bản sao trước nâng cấp nằm trong thư mục `Backups` bên cạnh.
-4. Nếu đích đã có SQLite hoặc tệp nhật ký, dừng và giữ cả hai bản. Nếu thao tác bị gián đoạn trước khi SQLite đích xuất hiện, chạy lại lệnh sau khi chắc chắn app đã dừng.
+4. Nếu SQLite cũ đã nằm đúng đường dẫn mặc định, dùng chính đường dẫn tuyệt đối đó làm nguồn sau khi đóng OpenNote cũ. Lệnh giữ một bản sao trước khi thay SQLite đã nâng cấp. Nếu ứng dụng báo còn nhật ký, hãy đóng ứng dụng đang dùng SQLite để nó hoàn tất nhật ký. Nếu nguồn vẫn được cấu hình dùng WAL, hãy chuyển từ bản sao SQLite nhất quán sang đích trống.
+5. Với nguồn ở đường dẫn khác, đích phải trống. Nếu lệnh bị gián đoạn, xác nhận app đã dừng rồi chạy lại. Với nâng cấp tại chỗ, lệnh kiểm tra SQLite đã đóng sạch và báo khi lược đồ đã hiện hành, kể cả khi tệp còn dùng chế độ WAL.
 
 ## Thay bản app hoặc quay lại bản trước
 

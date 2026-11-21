@@ -48,10 +48,11 @@ export function useExportAllNotes() {
     async (fmt: ExportFormat) => {
       setExporting(true);
       try {
-        const res = await fetch("/api/notes/export");
-        if (!res.ok) throw new Error("export failed");
-        const data = await res.json();
-        const notes: ExportedNote[] = data.notes ?? [];
+        const data = await withSavedDrafts(() => jsonFetch<{
+          notes: ExportedNote[];
+          folders: { id: string; name: string }[];
+        }>("/api/notes/export", { cache: "no-store" }));
+        const notes = data.notes;
         const stamp = new Date().toISOString().slice(0, 10);
         let blob: Blob;
         let filename: string;
@@ -151,10 +152,10 @@ export function useExportAllNotes() {
           description: `${notes.length} ghi chú đã được tải về trong tệp “${filename}”.`,
           duration: 2500,
         });
-      } catch {
+      } catch (error) {
         toast({
           title: "Không xuất được ghi chú",
-          description: "Vui lòng thử lại.",
+          description: error instanceof Error ? error.message : "Vui lòng thử lại.",
           variant: "destructive",
         });
       } finally {
@@ -215,6 +216,7 @@ export function useInvalidateNotes() {
 }
 
 export function useCreateNote() {
+  const { toast } = useToast();
   const invalidate = useInvalidateNotes();
   const selectNote = useOpenNoteStore((s) => s.selectNote);
   const filter = useOpenNoteStore((s) => s.filter);
@@ -225,6 +227,11 @@ export function useCreateNote() {
         method: "POST",
         body: JSON.stringify({ folderId }),
       }),
+    onError: (error) => toast({
+      title: "Không tạo được ghi chú",
+      description: error.message,
+      variant: "destructive",
+    }),
     onSuccess: (note) => {
       invalidate();
       selectNote(note.id);

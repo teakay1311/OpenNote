@@ -13,15 +13,14 @@ function loopbackOrigin(authority: string | null) {
 }
 
 export function proxy(request: NextRequest) {
-  if (!writeMethods.has(request.method)) return NextResponse.next();
-
   const destination = loopbackOrigin(request.headers.get("host"));
   const origin = request.headers.get("origin");
   const site = request.headers.get("sec-fetch-site");
   const originAuthority = origin?.match(/^http:\/\/(.+)$/i)?.[1] ?? null;
-  if (!destination || (origin !== null && loopbackOrigin(originAuthority) !== destination) ||
-      (site !== null && site !== "same-origin")) {
-    return NextResponse.json({ error: "Yêu cầu ghi phải đến từ địa chỉ OpenNote cục bộ" }, { status: 403 });
+  const allowedSite = site === null || site === "same-origin" ||
+    (site === "none" && !writeMethods.has(request.method));
+  if (!destination || (origin !== null && loopbackOrigin(originAuthority) !== destination) || !allowedSite) {
+    return NextResponse.json({ error: "Yêu cầu phải đến từ địa chỉ OpenNote cục bộ" }, { status: 403 });
   }
 
   return NextResponse.next();
